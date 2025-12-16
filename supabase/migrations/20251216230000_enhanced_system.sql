@@ -1,24 +1,36 @@
--- Migración completa del sistema mejorado
--- Actualización de tipos de tickets según CSV
+CREATE TABLE IF NOT EXISTS public.ticket_types (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  price DECIMAL NOT NULL,
+  people_per_ticket INTEGER DEFAULT 1,
+  total_stock INTEGER DEFAULT 100,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
 
--- Primero limpiar datos existentes para fresh start
+CREATE TABLE IF NOT EXISTS public.tickets (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticket_type_id UUID NOT NULL REFERENCES public.ticket_types(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'valid' CHECK (status IN ('valid', 'used', 'cancelled')),
+  scanned_at TIMESTAMP WITH TIME ZONE,
+  sale_id UUID,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
 DELETE FROM public.tickets;
 DELETE FROM public.ticket_types;
 
--- Actualizar tipos de tickets según la proyección CSV
 INSERT INTO public.ticket_types (name, description, price, people_per_ticket, total_stock) VALUES
-  ('PREVENTA', 'ACCESO HASTA LAS 00:00', 5000, 1, 25),
-  ('PROMO 2X (10)', 'ACCESO HASTA LAS 00:00', 8000, 2, 10),
-  ('PROMO 4X (5)', 'ACCESO HASTA LAS 00:00', 15000, 4, 3),
-  ('PROMO 4X (5) BOT', '4 BOTELLAS DE AGUA, GUARDARROPIA INCLUIDA ACCESO HASTA LAS 01:00', 25000, 4, 3),
+  ('PREVENTA 1', 'ACCESO HASTA LAS 00:00', 5000, 1, 25),
+  ('PROMO 2X TEMPRANO', 'ACCESO HASTA LAS 00:00', 8000, 2, 10),
+  ('PROMO 4X TEMPRANO', 'ACCESO HASTA LAS 00:00', 15000, 4, 3),
+  ('PROMO 4X BOT TEMPRANO', '4 BOTELLAS DE AGUA, GUARDARROPIA INCLUIDA ACCESO HASTA LAS 01:00', 25000, 4, 3),
   ('PREVENTA 2', 'ACCESO HASTA LAS 01:30', 8000, 1, 25),
-  ('PROMO 2X (10)', 'ACCESO HASTA LAS 01:30', 15000, 2, 10),
-  ('PROMO 4X (5)', 'ACCESO HASTA LAS 01:30', 25000, 4, 3),
-  ('PROMO 4X (5) BOT', '4 BOTELLAS DE AGUA, GUARDARROPIA INCLUIDA ACCESO HASTA LAS 02:00', 35000, 4, 3),
+  ('PROMO 2X TARDE', 'ACCESO HASTA LAS 01:30', 15000, 2, 10),
+  ('PROMO 4X TARDE', 'ACCESO HASTA LAS 01:30', 25000, 4, 3),
+  ('PROMO 4X BOT TARDE', '4 BOTELLAS DE AGUA, GUARDARROPIA INCLUIDA ACCESO HASTA LAS 02:00', 35000, 4, 3),
   ('GENERAL', 'Sin límite de horario', 10000, 1, 20);
-
--- Tabla de usuarios/administradores
-CREATE TABLE public.users (
+CREATE TABLE IF NOT EXISTS public.users (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   username TEXT NOT NULL UNIQUE,
@@ -27,8 +39,7 @@ CREATE TABLE public.users (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Tabla de embajadores
-CREATE TABLE public.ambassadors (
+CREATE TABLE IF NOT EXISTS public.ambassadors (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
@@ -38,8 +49,7 @@ CREATE TABLE public.ambassadors (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Tabla de clientes/compradores
-CREATE TABLE public.customers (
+CREATE TABLE IF NOT EXISTS public.customers (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -47,8 +57,7 @@ CREATE TABLE public.customers (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Tabla de ventas (link entre tickets y compradores)
-CREATE TABLE public.sales (
+CREATE TABLE IF NOT EXISTS public.sales (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   ticket_id UUID NOT NULL REFERENCES public.tickets(id) ON DELETE CASCADE,
   customer_id UUID NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
@@ -60,31 +69,37 @@ CREATE TABLE public.sales (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Actualizar tabla tickets para incluir referencia de venta
-ALTER TABLE public.tickets ADD COLUMN sale_id UUID REFERENCES public.sales(id);
+ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS sale_id UUID REFERENCES public.sales(id);
 
--- Índices para performance
-CREATE INDEX idx_sales_customer_id ON public.sales(customer_id);
-CREATE INDEX idx_sales_ambassador_id ON public.sales(ambassador_id);
-CREATE INDEX idx_sales_created_at ON public.sales(created_at);
-CREATE INDEX idx_customers_email ON public.customers(email);
-CREATE INDEX idx_ambassadors_email ON public.ambassadors(email);
-
--- Habilitar RLS para nuevas tablas
+CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON public.sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sales_ambassador_id ON public.sales(ambassador_id);
+CREATE INDEX IF NOT EXISTS idx_sales_created_at ON public.sales(created_at);
+CREATE INDEX IF NOT EXISTS idx_customers_email ON public.customers(email);
+CREATE INDEX IF NOT EXISTS idx_ambassadors_email ON public.ambassadors(email);
+ALTER TABLE public.ticket_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ambassadors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
 
--- Políticas RLS (acceso público por ahora, luego se restringe con auth)
+DROP POLICY IF EXISTS "Allow public read ticket_types" ON public.ticket_types;
+DROP POLICY IF EXISTS "Allow public access tickets" ON public.tickets;
+DROP POLICY IF EXISTS "Allow public read users" ON public.users;
+DROP POLICY IF EXISTS "Allow public insert users" ON public.users;
+DROP POLICY IF EXISTS "Allow public access ambassadors" ON public.ambassadors;
+DROP POLICY IF EXISTS "Allow public access customers" ON public.customers;
+DROP POLICY IF EXISTS "Allow public access sales" ON public.sales;
+
+CREATE POLICY "Allow public read ticket_types" ON public.ticket_types FOR ALL USING (true);
+CREATE POLICY "Allow public access tickets" ON public.tickets FOR ALL USING (true);
 CREATE POLICY "Allow public read users" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Allow public insert users" ON public.users FOR INSERT WITH CHECK (true);
-
 CREATE POLICY "Allow public access ambassadors" ON public.ambassadors FOR ALL USING (true);
 CREATE POLICY "Allow public access customers" ON public.customers FOR ALL USING (true);
 CREATE POLICY "Allow public access sales" ON public.sales FOR ALL USING (true);
 
--- Función para crear venta completa (atómica)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE OR REPLACE FUNCTION public.create_complete_sale(
   ticket_type_id UUID,
   customer_name TEXT,
@@ -194,7 +209,7 @@ BEGIN
 END;
 $$;
 
--- Función para obtener reporte completo de ventas
+
 CREATE OR REPLACE FUNCTION public.get_sales_report()
 RETURNS TABLE (
   ticket_id UUID,
@@ -238,22 +253,20 @@ BEGIN
 END;
 $$;
 
--- Habilitar realtime para nuevas tablas
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_types;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.ambassadors;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.customers;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.sales;
-
--- Insertar usuario admin
 INSERT INTO public.users (email, username, password_hash, role)
 VALUES (
   'Impcorecl@gmail.com',
   'ImpcoreRecords.vina',
   crypt('Immersive.2025$$', gen_salt('bf')),
   'admin'
-);
-
--- Función de autenticación
+) ON CONFLICT (email) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.authenticate_user(
   username_input TEXT,
   password_input TEXT
@@ -296,8 +309,9 @@ BEGIN
 END;
 $$;
 
--- Insertar algunos embajadores de ejemplo
+
 INSERT INTO public.ambassadors (name, email, commission_rate, is_active) VALUES
   ('Embajador Principal', 'embajador1@impcore.cl', 0.10, true),
   ('Promotor Digital', 'embajador2@impcore.cl', 0.10, true),
-  ('Street Team', 'embajador3@impcore.cl', 0.08, true);
+  ('Street Team', 'embajador3@impcore.cl', 0.08, true)
+ON CONFLICT (email) DO NOTHING;
