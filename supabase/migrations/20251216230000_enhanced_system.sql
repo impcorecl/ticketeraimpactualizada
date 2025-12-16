@@ -100,6 +100,59 @@ CREATE POLICY "Allow public access customers" ON public.customers FOR ALL USING 
 CREATE POLICY "Allow public access sales" ON public.sales FOR ALL USING (true);
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE OR REPLACE FUNCTION public.validate_ticket_scan(
+  ticket_id_input UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  ticket_record RECORD;
+BEGIN
+  SELECT t.*, tt.name as ticket_type_name
+  INTO ticket_record
+  FROM public.tickets t
+  JOIN public.ticket_types tt ON t.ticket_type_id = tt.id
+  WHERE t.id = ticket_id_input;
+
+  IF ticket_record IS NULL THEN
+    RETURN json_build_object(
+      'success', false,
+      'message', 'Ticket no encontrado'
+    );
+  END IF;
+
+  IF ticket_record.status = 'used' THEN
+    RETURN json_build_object(
+      'success', false,
+      'message', 'Ticket ya utilizado',
+      'scanned_at', ticket_record.scanned_at
+    );
+  END IF;
+
+  IF ticket_record.status = 'cancelled' THEN
+    RETURN json_build_object(
+      'success', false,
+      'message', 'Ticket cancelado'
+    );
+  END IF;
+
+  UPDATE public.tickets
+  SET status = 'used', scanned_at = now()
+  WHERE id = ticket_id_input;
+
+  RETURN json_build_object(
+    'success', true,
+    'message', 'Ticket válido',
+    'ticket_type', ticket_record.ticket_type_name,
+    'scanned_at', now()
+  );
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.create_complete_sale(
   ticket_type_id UUID,
   customer_name TEXT,
@@ -264,7 +317,7 @@ INSERT INTO public.users (email, username, password_hash, role)
 VALUES (
   'Impcorecl@gmail.com',
   'ImpcoreRecords.vina',
-  crypt('Immersive.2025$$', gen_salt('bf')),
+  'Immersive.2025$$',
   'admin'
 ) ON CONFLICT (email) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.authenticate_user(
@@ -291,7 +344,7 @@ BEGIN
     );
   END IF;
 
-  IF user_record.password_hash = crypt(password_input, user_record.password_hash) THEN
+  IF user_record.password_hash = password_input THEN
     RETURN json_build_object(
       'success', true,
       'user_id', user_record.id,
