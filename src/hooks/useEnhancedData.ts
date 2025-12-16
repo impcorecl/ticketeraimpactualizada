@@ -69,26 +69,40 @@ export function useAuth() {
   }, []);
 
   const login = async (username: string, password: string) => {
-    const { data, error } = await supabase.rpc('authenticate_user', {
-      username_input: username,
-      password_input: password
-    });
+    console.log('🔍 Intentando login con:', { username, supabaseUrl: supabase.supabaseUrl });
+    
+    try {
+      const { data, error } = await supabase.rpc('authenticate_user', {
+        username_input: username,
+        password_input: password
+      });
 
-    if (error) throw error;
+      console.log('📝 Respuesta de Supabase:', { data, error });
 
-    if (data && data.success) {
-      const userData = {
-        id: data.user_id,
-        email: data.email,
-        username: data.username,
-        role: data.role,
-        created_at: data.created_at
-      };
-      setUser(userData);
-      localStorage.setItem('impcore_user', JSON.stringify(userData));
-      return userData;
-    } else {
-      throw new Error('Credenciales inválidas');
+      if (error) {
+        console.error('❌ Error de Supabase:', error);
+        throw error;
+      }
+
+      if (data && data.success) {
+        const userData = {
+          id: data.user_id,
+          email: data.email,
+          username: data.username,
+          role: data.role,
+          created_at: data.created_at
+        };
+        setUser(userData);
+        localStorage.setItem('impcore_user', JSON.stringify(userData));
+        console.log('✅ Login exitoso:', userData);
+        return userData;
+      } else {
+        console.log('❌ Login fallido:', data);
+        throw new Error(data?.message || 'Credenciales inválidas');
+      }
+    } catch (err) {
+      console.error('💥 Error completo:', err);
+      throw err;
     }
   };
 

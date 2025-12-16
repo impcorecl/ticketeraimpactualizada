@@ -13,6 +13,43 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
+  const testConnection = async () => {
+    setIsLoading(true);
+    try {
+      // Import supabase for testing
+      const { supabase } = await import("@/integrations/supabase/client");
+      
+      // Test function exists
+      const { data, error } = await supabase.rpc('check_user_exists');
+      
+      if (error) {
+        toast.error(`❌ Error BD: ${error.message}`);
+        console.error('Supabase error:', error);
+        return;
+      }
+
+      if (data?.success) {
+        toast.success(`✅ BD OK - ${data.user_count} usuarios`);
+        console.log('🎯 Usuario encontrado:', data.sample_user);
+      } else {
+        toast.error("⚠️ No hay usuarios en BD");
+        console.log('📝 Respuesta:', data);
+      }
+      
+      // Test env vars
+      console.log('🔗 Variables:', {
+        url: import.meta.env.VITE_SUPABASE_URL,
+        key: import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...'
+      });
+      
+    } catch (error: any) {
+      toast.error(`💥 Error: ${error.message}`);
+      console.error('Test error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) {
@@ -24,9 +61,10 @@ export function LoginForm() {
     try {
       await login(username, password);
       toast.success("Sesión iniciada correctamente");
-    } catch (error) {
-      toast.error("Credenciales incorrectas");
-      console.error(error);
+    } catch (error: any) {
+      const errorMsg = error?.message || "Credenciales incorrectas";
+      toast.error(`❌ ${errorMsg}`);
+      console.error('Error de login:', error);
     } finally {
       setIsLoading(false);
     }
@@ -70,19 +108,32 @@ export function LoginForm() {
                 className="bg-secondary/30"
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-              size="lg"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <LogIn className="h-4 w-4 mr-2" />
-              )}
-              Iniciar Sesión
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={isLoading}
+                size="lg"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <LogIn className="h-4 w-4 mr-2" />
+                )}
+                Iniciar Sesión
+              </Button>
+              <Button 
+                type="button"
+                variant="outline"
+                onClick={testConnection}
+                disabled={isLoading}
+                size="lg"
+                className="px-3"
+                title="Probar conexión"
+              >
+                🔧
+              </Button>
+            </div>
           </form>
           
           <div className="mt-6 text-center">
@@ -90,6 +141,10 @@ export function LoginForm() {
               <p>Credenciales de acceso:</p>
               <p className="font-mono text-xs">ImpcoreRecords.vina</p>
               <p className="font-mono text-xs">Immersive.2025$$</p>
+            </div>
+            <div className="mt-3 text-xs">
+              <span>🔗 Supabase: {import.meta.env.VITE_SUPABASE_URL ? '✅' : '❌'}</span>
+              <span className="ml-2">🔑 Key: {import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅' : '❌'}</span>
             </div>
           </div>
         </CardContent>

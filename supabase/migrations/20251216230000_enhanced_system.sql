@@ -286,11 +286,11 @@ BEGIN
   IF user_record IS NULL THEN
     RETURN json_build_object(
       'success', false,
-      'message', 'Usuario no encontrado'
+      'message', 'Usuario no encontrado',
+      'debug', 'No user found with username: ' || username_input
     );
   END IF;
 
-  -- Verificar contraseña usando crypt
   IF user_record.password_hash = crypt(password_input, user_record.password_hash) THEN
     RETURN json_build_object(
       'success', true,
@@ -303,7 +303,41 @@ BEGIN
   ELSE
     RETURN json_build_object(
       'success', false,
-      'message', 'Contraseña incorrecta'
+      'message', 'Contraseña incorrecta',
+      'debug', 'Password mismatch for user: ' || user_record.username
+    );
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.check_user_exists()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  user_count INTEGER;
+  user_record RECORD;
+BEGIN
+  SELECT COUNT(*) INTO user_count FROM public.users;
+  
+  IF user_count > 0 THEN
+    SELECT * INTO user_record FROM public.users LIMIT 1;
+    RETURN json_build_object(
+      'success', true,
+      'user_count', user_count,
+      'sample_user', json_build_object(
+        'username', user_record.username,
+        'email', user_record.email,
+        'created_at', user_record.created_at
+      )
+    );
+  ELSE
+    RETURN json_build_object(
+      'success', false,
+      'user_count', 0,
+      'message', 'No users found in database'
     );
   END IF;
 END;
