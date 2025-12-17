@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,12 +6,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/hooks/useEnhancedData";
 import { LogIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const testConnection = async () => {
     setIsLoading(true);
@@ -59,8 +68,14 @@ export function LoginForm() {
 
     setIsLoading(true);
     try {
-      await login(username, password);
-      toast.success("Sesión iniciada correctamente");
+      const result = await login(username, password);
+      console.log('🎯 Login result:', result);
+      toast.success("¡Sesión iniciada correctamente!");
+      
+      // Forzar navegación inmediata
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 100);
     } catch (error: any) {
       const errorMsg = error?.message || "Credenciales incorrectas";
       toast.error(`❌ ${errorMsg}`);

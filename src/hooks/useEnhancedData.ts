@@ -62,8 +62,11 @@ export function useAuth() {
   useEffect(() => {
     // Check if user is stored in localStorage
     const storedUser = localStorage.getItem('impcore_user');
+    console.log('🔍 Checking stored user:', storedUser);
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      console.log('✅ User loaded from storage:', userData);
     }
     setIsLoading(false);
   }, []);
@@ -111,9 +114,12 @@ export function useAuth() {
     localStorage.removeItem('impcore_user');
   };
 
+  const isAuthenticated = !!user;
+  console.log('🔐 Auth status:', { user: !!user, isAuthenticated, isLoading });
+
   return {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated,
     isLoading,
     login,
     logout
@@ -221,13 +227,13 @@ export function useCreateCompleteSale() {
   return useMutation({
     mutationFn: async (saleData: CreateSaleRequest) => {
       const { data, error } = await supabase.rpc("create_complete_sale", {
-        ticket_type_id: saleData.ticket_type_id,
-        customer_name: saleData.customer_name,
-        customer_email: saleData.customer_email,
-        customer_phone: saleData.customer_phone || null,
-        ambassador_id: saleData.ambassador_id || null,
-        payment_method: saleData.payment_method || 'cash',
-        notes: saleData.notes || null
+        p_ticket_type_id: saleData.ticket_type_id,
+        p_customer_name: saleData.customer_name,
+        p_customer_email: saleData.customer_email,
+        p_customer_phone: saleData.customer_phone || null,
+        p_ambassador_id: saleData.ambassador_id || null,
+        p_payment_method: saleData.payment_method || 'cash',
+        p_notes: saleData.notes || null
       });
       
       if (error) throw error;

@@ -154,13 +154,13 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.create_complete_sale(
-  ticket_type_id UUID,
-  customer_name TEXT,
-  customer_email TEXT,
-  customer_phone TEXT DEFAULT NULL,
-  ambassador_id UUID DEFAULT NULL,
-  payment_method TEXT DEFAULT 'cash',
-  notes TEXT DEFAULT NULL
+  p_ticket_type_id UUID,
+  p_customer_name TEXT,
+  p_customer_email TEXT,
+  p_customer_phone TEXT DEFAULT NULL,
+  p_ambassador_id UUID DEFAULT NULL,
+  p_payment_method TEXT DEFAULT 'cash',
+  p_notes TEXT DEFAULT NULL
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -178,7 +178,7 @@ BEGIN
   -- Verificar disponibilidad de stock
   SELECT * INTO ticket_type_record
   FROM public.ticket_types
-  WHERE id = ticket_type_id;
+  WHERE id = p_ticket_type_id;
 
   IF ticket_type_record IS NULL THEN
     RETURN json_build_object(
@@ -191,7 +191,7 @@ BEGIN
   IF (
     SELECT COUNT(*) 
     FROM public.tickets t
-    WHERE t.ticket_type_id = ticket_type_id
+    WHERE t.ticket_type_id = p_ticket_type_id
   ) >= ticket_type_record.total_stock THEN
     RETURN json_build_object(
       'success', false,
@@ -201,7 +201,7 @@ BEGIN
 
   -- Crear o buscar cliente
   INSERT INTO public.customers (name, email, phone)
-  VALUES (customer_name, customer_email, customer_phone)
+  VALUES (p_customer_name, p_customer_email, p_customer_phone)
   ON CONFLICT (email) DO UPDATE SET
     name = EXCLUDED.name,
     phone = COALESCE(EXCLUDED.phone, customers.phone)
@@ -209,14 +209,14 @@ BEGIN
 
   -- Crear ticket
   INSERT INTO public.tickets (ticket_type_id, status)
-  VALUES (ticket_type_id, 'valid')
+  VALUES (p_ticket_type_id, 'valid')
   RETURNING * INTO ticket_record;
 
   -- Calcular comisión si hay embajador
-  IF ambassador_id IS NOT NULL THEN
+  IF p_ambassador_id IS NOT NULL THEN
     SELECT commission_rate INTO commission
     FROM public.ambassadors
-    WHERE id = ambassador_id AND is_active = true;
+    WHERE id = p_ambassador_id AND is_active = true;
     
     IF commission IS NULL THEN
       commission := 0;
@@ -238,11 +238,11 @@ BEGIN
   VALUES (
     ticket_record.id,
     customer_record.id,
-    ambassador_id,
+    p_ambassador_id,
     ticket_type_record.price,
     commission,
-    payment_method,
-    notes
+    p_payment_method,
+    p_notes
   )
   RETURNING * INTO sale_record;
 
