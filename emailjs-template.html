@@ -11,10 +11,10 @@
             box-sizing: border-box; 
         }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            font-family: Arial, sans-serif; 
             line-height: 1.4; 
             color: #fff; 
-            background: linear-gradient(135deg, #4A90E2 0%, #7B68EE 50%, #FF6B9D 100%);
+            background-color: #4A90E2;
             margin: 0;
             padding: 20px;
         }
@@ -29,9 +29,9 @@
         .header-section { 
             width: 100%; 
             background: linear-gradient(135deg, #4A90E2 0%, #7B68EE 50%, #FF6B9D 100%);
+            background-color: #4A90E2; /* Fallback color */
             padding: 40px 30px;
             text-align: center;
-            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="stars" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="white" opacity="0.3"/></pattern></defs><rect width="100" height="100" fill="url(%23stars)"/></svg>');
         }
         .main-title {
             font-size: 36px;
@@ -76,6 +76,8 @@
             height: 180px;
             display: block;
             border-radius: 8px;
+            border: none;
+            outline: none;
         }
         .qr-label {
             color: #FF6B9D;
@@ -248,13 +250,13 @@
             <div class="qr-event-flex">
                 <div class="qr-section">
                     <div class="qr-container">
-                        <img src="{{qr_code}}" alt="Código QR del Ticket" />
+                        <img src="{{qr_code}}" alt="Código QR del Ticket" style="max-width: 180px; max-height: 180px;" onerror="this.parentNode.innerHTML='<div style=\"width: 180px; height: 180px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 14px; text-align: center;\">QR CODE<br>{{ticket_id}}</div>'"/>
                     </div>
                     <div class="qr-label">📱 Escanea para validar</div>
                 </div>
                 
                 <div class="event-photo">
-                    <img src="https://ticketeraimpactualizada.vercel.app/flayer%20aniversario1080x1080.png" alt="Bounce2Bounce Event" onerror="this.style.display='none'" />
+                    <div style="width: 180px; height: 180px; background: linear-gradient(135deg, #FF6B9D, #4A90E2, #7B68EE); border-radius: 15px; border: 4px solid #FF6B9D; box-shadow: 0 10px 30px rgba(75,144,226,0.4); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 18px; text-align: center; line-height: 1.2;">BOUNCE2<br>BOUNCE<br><span style="font-size: 14px; opacity: 0.9;">IMPCORE<br>ANIVERSARIO</span></div>
                     <div class="event-label">🎵 Evento Oficial</div>
                 </div>
             </div>
