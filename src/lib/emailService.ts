@@ -298,7 +298,7 @@ export async function sendTicketEmail(emailData: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Impcore Records <noreply@impcore.cl>',
+          from: 'Impcore Records <onboarding@resend.dev>',
           to: [emailData.to],
           subject: `🎵 Tu Ticket: ${emailData.ticketType} - Impcore Records`,
           html: emailHTML,
