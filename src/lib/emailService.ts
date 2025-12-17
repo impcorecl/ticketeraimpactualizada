@@ -95,36 +95,55 @@ export function generateTicketEmailHTML(ticketData: {
         }
         .qr-event-flex {
             display: flex;
-            align-items: center;
-            gap: 20px;
+            align-items: flex-start;
+            gap: 40px;
             justify-content: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
+            padding: 20px;
         }
         .qr-section {
             flex-shrink: 0;
+            text-align: center;
         }
         .qr-container {
             background: white;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(255,107,157,0.3);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(255,107,157,0.4);
+            margin-bottom: 10px;
         }
         .qr-container img {
-            width: 150px;
-            height: 150px;
+            width: 180px;
+            height: 180px;
             display: block;
             border-radius: 8px;
         }
+        .qr-label {
+            color: #FF6B9D;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
         .event-photo {
             flex-shrink: 0;
+            text-align: center;
         }
         .event-photo img {
-            width: 150px;
-            height: 150px;
+            width: 180px;
+            height: 180px;
             object-fit: cover;
-            border-radius: 12px;
-            border: 3px solid #FF6B9D;
-            box-shadow: 0 8px 25px rgba(75,144,226,0.3);
+            border-radius: 15px;
+            border: 4px solid #FF6B9D;
+            box-shadow: 0 10px 30px rgba(75,144,226,0.4);
+            margin-bottom: 10px;
+        }
+        .event-label {
+            color: #4A90E2;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .ticket-info-section {
             background: #0a0a0a;
@@ -244,8 +263,15 @@ export function generateTicketEmailHTML(ticketData: {
             .email-container { margin: 0; border-radius: 15px; }
             .main-title { font-size: 28px; }
             .event-name { font-size: 18px; }
-            .qr-event-flex { flex-direction: column; gap: 15px; }
-            .qr-container img, .event-photo img { width: 120px; height: 120px; }
+            .qr-event-flex { 
+                flex-direction: column; 
+                gap: 30px;
+                align-items: center;
+            }
+            .qr-container img, .event-photo img { 
+                width: 160px; 
+                height: 160px; 
+            }
             .ticket-type { font-size: 22px; }
             .detail-row { flex-direction: column; align-items: flex-start; gap: 5px; }
             .venue-address { font-size: 14px; }
@@ -267,10 +293,12 @@ export function generateTicketEmailHTML(ticketData: {
                     <div class="qr-container">
                         <img src="${ticketData.qrCodeDataUrl}" alt="Código QR del Ticket" />
                     </div>
+                    <div class="qr-label">📱 Escanea para validar</div>
                 </div>
                 
                 <div class="event-photo">
                     <img src="/flayer aniversario1080x1080.png" alt="Bounce2Bounce Event" onerror="this.style.display='none'" />
+                    <div class="event-label">🎵 Evento Oficial</div>
                 </div>
             </div>
         </div>
@@ -444,11 +472,14 @@ async function sendWithEmailJS(emailData: any, emailHTML: string) {
         user_id: EMAILJS_USER_ID,
         template_params: {
           to_email: emailData.to,
-          to_name: emailData.customerName,
+          customer_name: emailData.customerName,
           ticket_type: emailData.ticketType,
-          html_content: emailHTML,
+          price: emailData.price.toLocaleString(),
+          people_count: emailData.people_per_ticket,
+          ticket_id: emailData.ticketId,
+          qr_code: emailData.qrCodeDataUrl,
           from_name: 'Impcore Records',
-          reply_to: 'contact@impcore.cl'
+          reply_to: 'Impcorecl@gmail.com'
         }
       }),
     });
