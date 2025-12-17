@@ -15,7 +15,18 @@ export function generateTicketEmailHTML(ticketData: {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="x-apple-disable-message-reformatting">
     <title>Tu Ticket - Impcore Records</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -298,15 +309,26 @@ export async function sendTicketEmail(emailData: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Impcore Records <onboarding@resend.dev>',
+          from: 'Impcore Records <delivered@resend.dev>',
           to: [emailData.to],
           subject: `🎵 Tu Ticket: ${emailData.ticketType} - Impcore Records`,
           html: emailHTML,
+          reply_to: 'contact@impcore.cl',
+          headers: {
+            'X-Entity-Ref-ID': emailData.ticketId,
+            'X-Priority': '1',
+            'Importance': 'high'
+          },
+          tags: [
+            { name: 'category', value: 'ticket' },
+            { name: 'event', value: 'impcore-records' }
+          ]
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Email enviado exitosamente:', result);
         return {
           success: true,
           messageId: result.id,
@@ -314,7 +336,9 @@ export async function sendTicketEmail(emailData: {
         };
       } else {
         const error = await response.json();
-        throw new Error(error.message || 'Error enviando email');
+        console.error('❌ Error de Resend:', error);
+        console.error('Status:', response.status, response.statusText);
+        throw new Error(`Resend Error: ${error.message || response.statusText}`);
       }
     } catch (error: any) {
       console.error('Error con Resend:', error);
