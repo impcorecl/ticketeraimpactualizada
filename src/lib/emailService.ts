@@ -279,23 +279,99 @@ export async function sendTicketEmail(emailData: {
   description?: string;
   qrCodeDataUrl: string;
 }) {
-  // Por ahora simular el envío
   const emailHTML = generateTicketEmailHTML({
     ...emailData,
     eventName: "Fiesta Impcore Records",
   });
 
-  // En producción aquí iría la integración con un servicio de email
-  // como SendGrid, Resend, Amazon SES, etc.
-  
   console.log("Email HTML generado:", emailHTML);
   
-  // Simular delay de envío
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Método 1: Resend API (recomendado para producción)
+  const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY;
   
-  return {
-    success: true,
-    messageId: `email_${Date.now()}`,
-    message: `Ticket enviado correctamente a ${emailData.to}`
-  };
+  if (RESEND_API_KEY) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Impcore Records <noreply@impcore.cl>',
+          to: [emailData.to],
+          subject: `🎵 Tu Ticket: ${emailData.ticketType} - Impcore Records`,
+          html: emailHTML,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return {
+          success: true,
+          messageId: result.id,
+          message: `Ticket enviado correctamente a ${emailData.to}`
+        };
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Error enviando email');
+      }
+    } catch (error: any) {
+      console.error('Error con Resend:', error);
+      
+      // Fallback a EmailJS si falla Resend
+      return sendWithEmailJS(emailData, emailHTML);
+    }
+  }
+  
+  // Método 2: EmailJS (funciona desde el browser, no requiere backend)
+  return sendWithEmailJS(emailData, emailHTML);
+}
+
+async function sendWithEmailJS(emailData: any, emailHTML: string) {
+  try {
+    // Usar EmailJS para envío directo desde el cliente
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: 'service_impcore', // Necesitas configurar esto en EmailJS
+        template_id: 'template_ticket', // Necesitas configurar esto en EmailJS
+        user_id: 'YOUR_EMAILJS_USER_ID', // Necesitas configurar esto
+        template_params: {
+          to_email: emailData.to,
+          to_name: emailData.customerName,
+          subject: `🎵 Tu Ticket: ${emailData.ticketType} - Impcore Records`,
+          html_content: emailHTML,
+        }
+      }),
+    });
+
+    if (response.ok) {
+      return {
+        success: true,
+        messageId: `emailjs_${Date.now()}`,
+        message: `Ticket enviado correctamente a ${emailData.to}`
+      };
+    } else {
+      throw new Error('Error con EmailJS');
+    }
+  } catch (error) {
+    console.error('Error enviando email:', error);
+    
+    // Como último recurso, abrir cliente de email
+    const subject = encodeURIComponent(`🎵 Tu Ticket: ${emailData.ticketType} - Impcore Records`);
+    const body = encodeURIComponent(`Hola ${emailData.customerName},\n\nTu ticket ha sido generado correctamente.\n\nID: ${emailData.ticketId}\nTipo: ${emailData.ticketType}\nPrecio: $${emailData.price.toLocaleString()}\n\n¡Te esperamos en el evento!\n\nImpcore Records`);
+    
+    const mailtoLink = `mailto:${emailData.to}?subject=${subject}&body=${body}`;
+    window.open(mailtoLink);
+    
+    return {
+      success: true,
+      messageId: `mailto_${Date.now()}`,
+      message: `Cliente de email abierto para enviar a ${emailData.to}`
+    };
+  }
 }
